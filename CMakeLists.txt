@@ -33,6 +33,11 @@ find_package(re2 CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(zstd REQUIRED)
+if (TARGET zstd::libzstd_shared)
+    set(SG_ZSTD zstd::libzstd_shared)
+else ()
+    set(SG_ZSTD zstd::libzstd_static)
+endif ()
 find_package(ZLIB REQUIRED)
 find_package(WebP)
 
@@ -254,7 +259,7 @@ target_link_libraries(SimpleGraphic
     Threads::Threads
     WebP::webpdecoder
     ZLIB::ZLIB
-    zstd::libzstd_shared
+    ${SG_ZSTD}
 )
 
 install(FILES $<TARGET_RUNTIME_DLLS:SimpleGraphic> DESTINATION ".")
@@ -317,7 +322,7 @@ add_library(lua-utf8 SHARED libs/luautf8/lutf8lib.c)
 
 target_compile_definitions(lua-utf8
     PRIVATE
-    LUA_BUILD_AS_DLL
+    $<$<BOOL:${WIN32}>:LUA_BUILD_AS_DLL>
 )
 
 target_include_directories(lua-utf8
@@ -347,8 +352,12 @@ add_library(luasocket SHARED
    "libs/luasocket/src/tcp.c"
    "libs/luasocket/src/timeout.c"
    "libs/luasocket/src/udp.c"
-   "libs/luasocket/src/wsocket.c"
 )
+if (WIN32)
+    target_sources(luasocket PRIVATE "libs/luasocket/src/wsocket.c")
+else ()
+    target_sources(luasocket PRIVATE "libs/luasocket/src/usocket.c")
+endif ()
 
 target_include_directories(luasocket
     PRIVATE
@@ -358,8 +367,8 @@ target_include_directories(luasocket
 target_link_libraries(luasocket
     PRIVATE
     LuaJIT::LuaJIT
-    wsock32
-    ws2_32
+    $<$<BOOL:${WIN32}>:wsock32>
+    $<$<BOOL:${WIN32}>:ws2_32>
 )
 
 set_target_properties( luasocket PROPERTIES OUTPUT_NAME "socket" ) 

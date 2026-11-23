@@ -115,6 +115,8 @@ sys_video_c::sys_video_c(sys_IMain* sysHnd)
 		platformType = GLFW_ANGLE_PLATFORM_TYPE_D3D11;
 	else // Native Windows
 		platformType = GLFW_ANGLE_PLATFORM_TYPE_D3D11;
+#elif defined(__APPLE__)
+	platformType = GLFW_ANGLE_PLATFORM_TYPE_METAL;
 #endif
 	glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, platformType);
 	glfwInit();
@@ -738,6 +740,11 @@ void sys_video_c::GetRelativeCursor(int& x, int& y)
 	if (!initialised) return;
 	double xpos, ypos;
 	glfwGetCursorPos(wnd, &xpos, &ypos);
+	// GLFW reports the cursor in window coordinates; on macOS those are points, not framebuffer pixels
+	if (vid.size[0] > 0 && vid.size[1] > 0) {
+		xpos *= (double)vid.fbSize[0] / vid.size[0];
+		ypos *= (double)vid.fbSize[1] / vid.size[1];
+	}
 	x = (int)floor(xpos);
 	y = (int)floor(ypos);
 }
@@ -745,7 +752,12 @@ void sys_video_c::GetRelativeCursor(int& x, int& y)
 void sys_video_c::SetRelativeCursor(int x, int y)
 {
 	if (!initialised) return;
-	glfwSetCursorPos(wnd, (double)x, (double)y);
+	double xpos = x, ypos = y;
+	if (vid.fbSize[0] > 0 && vid.fbSize[1] > 0) {
+		xpos *= (double)vid.size[0] / vid.fbSize[0];
+		ypos *= (double)vid.size[1] / vid.fbSize[1];
+	}
+	glfwSetCursorPos(wnd, xpos, ypos);
 }
 
 bool sys_video_c::IsCursorOverWindow()
